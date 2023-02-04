@@ -14,9 +14,6 @@ func main() {
 	flag.StringVar(&endpoint, "endpoint", "", "Remote S3 endpoint URL")
 	flag.StringVar(&encryptionKey, "encryption-key", "", "Optional key for transparent (weak) encryption")
 	flag.Parse()
-	if len(endpoint) == 0 {
-		log.Fatal("Missing endpoint")
-	}
 	srv, err := s3proxy.NewProxy(endpoint, encryptionKey)
 	if err != nil {
 		log.Fatal(err)
