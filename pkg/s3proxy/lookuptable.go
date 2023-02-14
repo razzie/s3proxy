@@ -24,11 +24,11 @@ func NewLookupTable(key string) *LookupTable {
 		decrypt: defaultTable,
 	}
 	if len(key) > 0 {
-		rand.New(keyToSeed(key)).Shuffle(len(lt.encrypt), func(i, j int) {
-			lt.encrypt[i], lt.encrypt[j] = lt.encrypt[j], lt.encrypt[i]
+		rand.New(keyToSeed(key)).Shuffle(len(lt.decrypt), func(i, j int) {
+			lt.decrypt[i], lt.decrypt[j] = lt.decrypt[j], lt.decrypt[i]
 		})
-		for i, b := range lt.encrypt {
-			lt.decrypt[int(b)] = byte(i)
+		for i, b := range lt.decrypt {
+			lt.encrypt[int(b)] = byte(i)
 		}
 	}
 	return lt

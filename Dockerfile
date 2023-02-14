@@ -1,7 +1,7 @@
 FROM golang:1.19 as builder
 WORKDIR /workspace
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make s3proxy
 
 FROM alpine
 WORKDIR /

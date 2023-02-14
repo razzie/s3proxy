@@ -45,9 +45,9 @@ func NewProxy(endpoint, encryptionKey string) (*Proxy, error) {
 func (p Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Host = p.endpoint.Host
 	if r.Method == "PUT" {
-		r.Body = &Reader{R: r.Body, LT: p.lt}
+		r.Body = &ReadCloser{R: r.Body, F: p.lt.Encrypt}
 	} else if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") {
-		w = &Writer{W: w, LT: p.lt}
+		w = &ResponseWriter{W: w, F: p.lt.Decrypt}
 	}
 	p.proxy.ServeHTTP(w, r)
 }
