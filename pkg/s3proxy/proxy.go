@@ -2,6 +2,7 @@ package s3proxy
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -9,11 +10,12 @@ import (
 )
 
 type Proxy struct {
-	lt    *LookupTable
-	proxy *httputil.ReverseProxy
+	lt     *LookupTable
+	proxy  *httputil.ReverseProxy
+	logger *log.Logger
 }
 
-func NewProxy(endpoint, encryptionKey string) (*Proxy, error) {
+func NewProxy(endpoint, encryptionKey string, logger *log.Logger) (*Proxy, error) {
 	if len(endpoint) == 0 {
 		return nil, errors.New("missing endpoint")
 	}
@@ -38,9 +40,13 @@ func NewProxy(endpoint, encryptionKey string) (*Proxy, error) {
 			return nil
 		}
 	}
+	if logger == nil {
+		logger = log.Default()
+	}
 	return &Proxy{
-		lt:    lt,
-		proxy: p,
+		lt:     lt,
+		proxy:  p,
+		logger: logger,
 	}, nil
 }
 
@@ -50,5 +56,27 @@ func (p Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") {
 		w = &ResponseWriter{W: w, F: p.lt.Decrypt}
 	}
-	p.proxy.ServeHTTP(w, r)
+	method := r.Method
+	path := r.URL.RequestURI()
+	ww := &responseWriterWrapper{w: w}
+	p.proxy.ServeHTTP(ww, r)
+	p.logger.Println(method, path, "->", ww.statusCode)
+}
+
+type responseWriterWrapper struct {
+	w          http.ResponseWriter
+	statusCode int
+}
+
+func (w *responseWriterWrapper) Header() http.Header {
+	return w.w.Header()
+}
+
+func (w *responseWriterWrapper) Write(p []byte) (int, error) {
+	return w.w.Write(p)
+}
+
+func (w *responseWriterWrapper) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.w.WriteHeader(statusCode)
 }
