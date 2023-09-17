@@ -53,7 +53,7 @@ func NewProxy(endpoint, encryptionKey string, logger *log.Logger) (*Proxy, error
 func (p Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "PUT" {
 		r.Body = &ReadCloser{R: r.Body, F: p.lt.Encrypt}
-	} else if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") {
+	} else if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") && !r.URL.Query().Has("uploadId") {
 		w = &ResponseWriter{W: w, F: p.lt.Decrypt}
 	}
 	method := r.Method
