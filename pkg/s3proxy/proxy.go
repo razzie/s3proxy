@@ -50,7 +50,7 @@ func NewProxy(o *ProxyOptions) (*Proxy, error) {
 			r.Host = u.Host
 			r.Header.Del("Content-MD5")
 			r.Header.Del("x-amz-meta-sha256")
-			updateAuthHeader(r, accessKey, secretKey, logger)
+			updateAuthHeader(r, accessKey, secretKey)
 			//dump, _ := httputil.DumpRequest(r, r.Header.Get("Content-Type") == "application/xml" || r.Method == "POST")
 			//logger.Println("REQUEST", string(dump))
 		}
@@ -60,6 +60,10 @@ func NewProxy(o *ProxyOptions) (*Proxy, error) {
 			if r.StatusCode == 403 {
 				dump, _ := httputil.DumpResponse(r, true)
 				logger.Println("ERROR", string(dump))
+				accessKey, _ := GetAWSAccessKey(r.Request)
+				secretKey := o.AccessKeySecretMap[accessKey]
+				stringToSign, _ := sigV2(r.Request, accessKey, secretKey)
+				logger.Println("SIGNATURE", stringToSign)
 			}
 			//dump, _ := httputil.DumpResponse(r, r.Header.Get("Content-Type") == "application/xml" || r.Request.Method == "POST")
 			//logger.Println("RESPONSE", string(dump))
@@ -104,15 +108,18 @@ func (w *responseWriterWrapper) WriteHeader(statusCode int) {
 	w.w.WriteHeader(statusCode)
 }
 
-func updateAuthHeader(r *http.Request, accessKey, secretKey string, logger *log.Logger) {
+func sigV2(r *http.Request, accessKey, secretKey string) (string, string) {
 	contentMD5 := r.Header.Get("Content-MD5")
 	contentType := r.Header.Get("Content-Type")
-	date := time.Now().UTC().Format(http.TimeFormat)
 	resource := getCanonicalizedResource(r)
-	_, signature := CalculateSignatureV2(accessKey, secretKey, r.Method, contentType, contentMD5, "", resource, r.Header)
-	//log.Println("SIGNATURE", stringToSign)
+	return CalculateSignatureV2(accessKey, secretKey, r.Method, contentType, contentMD5, "", resource, r.Header)
+}
+
+func updateAuthHeader(r *http.Request, accessKey, secretKey string) {
+	date := time.Now().UTC().Format(http.TimeFormat)
 	r.Header.Del("Date")
 	r.Header.Set("X-Amz-Date", date)
+	_, signature := sigV2(r, accessKey, secretKey)
 	r.Header.Set("Authorization", "AWS "+accessKey+":"+signature)
 }
 
